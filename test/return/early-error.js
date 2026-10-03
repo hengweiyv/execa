@@ -1,5 +1,6 @@
 import {arch} from 'node:os';
 import process from 'node:process';
+import {fileURLToPath} from 'node:url';
 import test from 'ava';
 import {execa, execaSync, $} from '../../index.js';
 import {setFixtureDirectory} from '../helpers/fixtures-directory.js';
@@ -43,6 +44,17 @@ test('child_process.spawn() early errors are returned', async t => {
 	const {failed} = await getEarlyErrorSubprocess({reject: false});
 	t.true(failed);
 });
+
+const testFileDescriptorError = async (t, code, reject) => {
+	const fixture = fileURLToPath(new URL('../fixtures/spawn-file-descriptor-error.js', import.meta.url));
+	const {stdout} = await execa(process.execPath, [fixture, code, String(reject)]);
+	t.is(stdout, code);
+};
+
+test('EMFILE before stdio initialization rejects without crashing', testFileDescriptorError, 'EMFILE', true);
+test('ENFILE before stdio initialization rejects without crashing', testFileDescriptorError, 'ENFILE', true);
+test('EMFILE before stdio initialization supports reject false', testFileDescriptorError, 'EMFILE', false);
+test('ENFILE before stdio initialization supports reject false', testFileDescriptorError, 'ENFILE', false);
 
 test('child_process.spawnSync() early errors are propagated with a correct shape', t => {
 	t.throws(getEarlyErrorSubprocessSync, expectedEarlyErrorSync);
